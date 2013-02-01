@@ -7,7 +7,7 @@ LDADD = @LIBOBJS@ @DNETLIB@ @EVENTLIB@ @PCAPLIB@
 
 sbin_PROGRAMS = arpd
 
-arpd_SOURCES = arpd.c err.h tree.h
+arpd_SOURCES = arpd.c err.h
 
 man_MANS = arpd.8
 

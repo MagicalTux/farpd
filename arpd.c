@@ -27,8 +27,7 @@
 #undef timeout_initialized
 
 #include <event.h>
-#include <dumbnet.h>
-#include "tree.h"
+#include <dnet.h>
 
 #define ARPD_MAX_ACTIVE		600
 #define ARPD_MAX_INACTIVE	300
@@ -45,21 +44,13 @@ struct arp_req {
 	struct event		discover;
 
 	struct addr		ha;
-
-	SPLAY_ENTRY(arp_req)	next;
 };
-
-static SPLAY_HEAD(tree, arp_req) arpd_reqs;
 
 int
 compare(struct arp_req *a, struct arp_req *b)
 {
 	return (addr_cmp(&a->pa, &b->pa));
 }
-
-SPLAY_PROTOTYPE(tree, arp_req, next, compare);
-
-SPLAY_GENERATE(tree, arp_req, next, compare);
 
 static pcap_t			*arpd_pcap;
 static arp_t			*arpd_arp;
@@ -190,8 +181,6 @@ arpd_init(char *dev, int naddresses, char **addresses)
 	
 	dst = arpd_expandips(naddresses, addresses);
 
-	SPLAY_INIT(&arpd_reqs);
-	
 	if ((arpd_arp = arp_open()) == NULL)
 		err(1, "arp_open");
 
@@ -314,7 +303,6 @@ arpd_timeout(int fd, short event, void *arg)
 {
 	struct arp_req *req = arg;
 	
-	SPLAY_REMOVE(tree, &arpd_reqs, req);
 	syslog(LOG_DEBUG, "%s: expiring %s", __func__, addr_ntoa(&req->pa));
 	arpd_free(req);
 }
@@ -370,65 +358,14 @@ arpd_recv_cb(u_char *u, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 		addr_pack(&tmp.pa, ADDR_TYPE_IP, IP_ADDR_BITS,
 		    &ethip->ar_tpa, IP_ADDR_LEN);
 
-		req = SPLAY_FIND(tree, &arpd_reqs, &tmp);
-		if (req == NULL) {
-			if ((req = calloc(1, sizeof(*req))) == NULL) {
-				syslog(LOG_ERR, "calloc: %m");
-				arpd_exit(1);
-			}
-			memcpy(&req->pa, &tmp.pa, sizeof(tmp.pa));
-
-			timeout_set(&req->active, arpd_timeout, req);
-			timeout_set(&req->inactive, arpd_timeout, req);
-			timeout_set(&req->discover, arpd_discovercb, req);
-			
-			timerclear(&tv);
-			tv.tv_sec = ARPD_MAX_ACTIVE;
-			timeout_add(&req->active, &tv);
-
-			SPLAY_INSERT(tree, &arpd_reqs, req);
-
-			/* Turn into negative cache */
-			if (arpd_lookup(&tmp.pa) == 0)
-				req->negative = 1;
-			else
-				arpd_discover(req, &src.arp_ha);
-		} else {
-			timerclear(&tv);
-			tv.tv_sec = ARPD_MAX_INACTIVE;
-			timeout_add(&req->inactive, &tv);
-			
-			if (req->negative) {
-				syslog(LOG_DEBUG, "%s: %s is allocated",
-				    __func__, addr_ntoa(&req->pa));
-				return;
-			}
-
-			if (req->cnt >= 3) {
-				arpd_send(arpd_eth, ARP_OP_REPLY,
-				    &arpd_ifent.intf_link_addr, &tmp.pa,
-				    &src.arp_ha, &src.arp_pa);
-			} else {
-				syslog(LOG_DEBUG,
-				    "%s: %s still discovering (%d)",
-				    __func__, addr_ntoa(&req->pa),
-				    req->cnt);
-			}
-		}
+			arpd_send(arpd_eth, ARP_OP_REPLY,
+			    &arpd_ifent.intf_link_addr, &tmp.pa,
+			    &src.arp_ha, &src.arp_pa);
 		break;
 		
 	case ARP_OP_REPLY:
 		addr_pack(&tmp.pa, ADDR_TYPE_IP, IP_ADDR_BITS,
 		    &ethip->ar_spa, IP_ADDR_LEN);
-		if ((req = SPLAY_FIND(tree, &arpd_reqs, &tmp)) != NULL) {
-			addr_pack(&src.arp_ha, ADDR_TYPE_ETH, ETH_ADDR_BITS,
-			    ethip->ar_sha, ETH_ADDR_LEN);
-			syslog(LOG_DEBUG, "%s: %s at %s", __func__,
-			    addr_ntoa(&req->pa), addr_ntoa(&src.arp_ha));
-			
-			/* This address is claimed */
-			req->negative = 1;
-		}
 		break;
 	}
 }
