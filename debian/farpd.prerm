@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        ;;
+    upgrade|failed-upgrade)
+        ;;
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 0
+        ;;
+esac
+
+if [ -x "/etc/init.d/farpd" ]; then
+        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+                invoke-rc.d farpd stop || exit $?
+        else
+                /etc/init.d/farpd stop || exit $?
+        fi
+fi
+
+#DEBHELPER#
