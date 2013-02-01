@@ -34,24 +34,6 @@
 
 #define PIDFILE			"/var/run/farpd.pid"
 
-struct arp_req {
-	struct addr		pa;
-	int			cnt;
-	int			negative;
-
-	struct event		active;
-	struct event		inactive;
-	struct event		discover;
-
-	struct addr		ha;
-};
-
-int
-compare(struct arp_req *a, struct arp_req *b)
-{
-	return (addr_cmp(&a->pa, &b->pa));
-}
-
 static pcap_t			*arpd_pcap;
 static arp_t			*arpd_arp;
 static eth_t			*arpd_eth;
@@ -290,56 +272,13 @@ arpd_lookup(struct addr *addr)
 }
 
 static void
-arpd_free(struct arp_req *req)
-{
-	timeout_del(&req->active);
-	timeout_del(&req->inactive);
-	timeout_del(&req->discover);
-	free(req);
-}
-
-static void
-arpd_timeout(int fd, short event, void *arg)
-{
-	struct arp_req *req = arg;
-	
-	syslog(LOG_DEBUG, "%s: expiring %s", __func__, addr_ntoa(&req->pa));
-	arpd_free(req);
-}
-
-static void
-arpd_discover(struct arp_req *req, struct addr *ha)
-{
-	struct timeval tv = {0, 500000};
-
-	if (ha != NULL)
-		memcpy(&req->ha, ha, sizeof(*ha));
-
-	if (req->cnt < 2) {
-		arpd_send(arpd_eth, ARP_OP_REQUEST,
-		    &arpd_ifent.intf_link_addr,
-		    &arpd_ifent.intf_addr, &req->ha, &req->pa);
-		timeout_add(&req->discover, &tv);
-	}
-	req->cnt++;
-}
-
-static void
-arpd_discovercb(int fd, short event, void *arg)
-{
-	struct arp_req *req = arg;
-
-	arpd_discover(req, NULL);
-}
-
-static void
 arpd_recv_cb(u_char *u, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 {
 	struct arp_hdr *arp;
 	struct arp_ethip *ethip;
-	struct arp_req *req, tmp;
 	struct arp_entry src;
 	struct timeval tv;
+	struct addr pa;
 
 	if (pkthdr->caplen < ETH_HDR_LEN + ARP_HDR_LEN + ARP_ETHIP_LEN)
 		return;
@@ -355,16 +294,16 @@ arpd_recv_cb(u_char *u, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	switch (ntohs(arp->ar_op)) {
 		
 	case ARP_OP_REQUEST:
-		addr_pack(&tmp.pa, ADDR_TYPE_IP, IP_ADDR_BITS,
+		addr_pack(&pa, ADDR_TYPE_IP, IP_ADDR_BITS,
 		    &ethip->ar_tpa, IP_ADDR_LEN);
 
 			arpd_send(arpd_eth, ARP_OP_REPLY,
-			    &arpd_ifent.intf_link_addr, &tmp.pa,
+			    &arpd_ifent.intf_link_addr, &pa,
 			    &src.arp_ha, &src.arp_pa);
 		break;
 		
 	case ARP_OP_REPLY:
-		addr_pack(&tmp.pa, ADDR_TYPE_IP, IP_ADDR_BITS,
+		addr_pack(&pa, ADDR_TYPE_IP, IP_ADDR_BITS,
 		    &ethip->ar_spa, IP_ADDR_LEN);
 		break;
 	}
