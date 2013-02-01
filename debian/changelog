@@ -1,0 +1,101 @@
+farpd (0.2-11) unstable; urgency=low
+
+  * configure.in: Fix FTBFS: configure: error: libevent not found with the
+    patch provided by Sebastian Ramacher (Closes: #676066)
+  * debian/rules: Use DEB_BUILD_MULTIARCH instead of DEB_BUILD_GNU_TYPE so
+    that libevent.a is found in the correct place.
+  * debian/control: Update maintainer's name and email
+  * debian/farpd.init: Add dependency on $remote_fs (lintian error)
+  * debian/compat: Use debhelper compatibility version 7
+
+ -- Javier Fernández-Sanguino Peña <jfs@debian.org>  Mon, 18 Jun 2012 19:04:19 +0200
+
+farpd (0.2-10) unstable; urgency=low
+
+  * Remove code using event_gotsig and event_sigcb, this external integers
+    are deprecated and no longer defined in newer versions of libevent 
+    (Closes: #559012)
+  * Fix LSB header, farpd requires $network and $syslog
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@debian.org>  Thu, 10 Dec 2009 02:38:17 +0100
+
+farpd (0.2-9) unstable; urgency=low
+
+  * Describe in the manpage known issues with nmap as described in Honeyd's
+    forums. More specifically at
+    http://honeyd.org/phpBB2/viewtopic.php?t=473&sid=8be0cc5c1edeb38458d41c15df04bbc0
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@debian.org>  Thu, 15 May 2008 00:15:59 +0200
+
+farpd (0.2-8) unstable; urgency=low
+
+  * Provide an LSB-complaint init.d script even if disabled by default
+    (Closes: #384320)
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Fri,  1 Dec 2006 02:15:47 +0100
+
+farpd (0.2-7) unstable; urgency=low
+
+  * Recompile against latest libevent-dev (1.0b) and libdumbnet-dev (1.8)
+    (Closes: #294398)
+  * Build-Depend against libpcap0.8-dev | libpcap-dev
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Tue, 18 Jan 2005 16:50:55 +0100
+
+farpd (0.2-6) unstable; urgency=low
+
+  * Lintian fixes:
+    - Updated Standard-Versions
+    - Changelog is now UTF-8
+  * Fix FTBFS in gcc 3.4 with patch from Andreas Jochens  (Closes: #258857)
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Thu,  5 Aug 2004 20:15:16 +0200
+
+farpd (0.2-5) unstable; urgency=low
+
+  * "The day after the tragedy" release
+    Esta versión está dedicada a todos aquellos que perdieron
+    sus vidas o fueron heridos en el brutal atentado terrorista
+    en Madrid de ayer. Mis más sinceras condolencias a sus familias
+    y amigos en este triste día.
+   (This release is dedicated to all those who lost their lives
+    or were injured in the brutal terrorist attack in Madrid
+    yesterday. My deepest condolences to their families and friends on
+    this sorrowful day.)
+  * Arpd name changed in manpage to farpd and changed PID file location
+  from /var/run/arpd.pid to /var/run/farpd.pid (Closes #237488)
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Fri, 12 Mar 2004 08:43:27 +0100
+
+farpd (0.2-4) unstable; urgency=low
+
+  * Recompiled with latest versions of libdumbevent and libevent 
+    (Closes: #219665)
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Sun,  9 Nov 2003 17:07:36 +0100
+
+farpd (0.2-3) unstable; urgency=low
+
+  * This is the "I will repeat 100 times: 'I should ldd my binaries
+    before uploading'" release
+  * Added libevent-dev to Build-Depends (Closes: #200819)
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Fri, 11 Jul 2003 18:39:09 +0200
+
+farpd (0.2-2) unstable; urgency=low
+
+  * Added  libdumbnet-dev and  libpcap-dev to build-depends (Closes: #199938)
+  * Fixed the configure.in script so that it calls dumbnet instead of
+    dnet.
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Fri,  4 Jul 2003 11:01:20 +0200
+
+farpd (0.2-1) unstable; urgency=low
+
+  * Initial Release.
+  * Changed upstream name of the package from arpd to farpd 
+    (after asking Niels Provos for permission)
+  * Changed all references to dnet into dumbnet.
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@computer.org>  Thu, 27 Mar 2003 10:25:02 +0100
+

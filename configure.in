@@ -19,33 +19,33 @@ dnl Checks for libraries.
 AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(nsl, gethostbyname)
 
-dnl Checks for (installed) libdnet
-AC_MSG_CHECKING(for libdnet)
-AC_ARG_WITH(libdnet,
-[  --with-libdnet=DIR      use libdnet in DIR],
+dnl Checks for (installed) libdumbnet
+AC_MSG_CHECKING(for libdumbnet)
+AC_ARG_WITH(libdumbnet,
+[  --with-libdumbnet=DIR      use libdumbnet in DIR],
 [ case "$withval" in
   yes|no)
      AC_MSG_RESULT(no)
      ;;
   *)
      AC_MSG_RESULT($withval)
-     if test -f $withval/src/libdnet.a; then
+     if test -f $withval/src/libdumbnet.a; then
         DNETINC="-I$withval/include"
-        DNETLIB="-L$withval/src -ldnet `$withval/dnet-config --libs`"
-     elif test -x $withval/bin/dnet-config; then
-        DNETINC="`$withval/bin/dnet-config --cflags`"
-        DNETLIB="`$withval/bin/dnet-config --libs`"
+        DNETLIB="-L$withval/src -ldumbnet `$withval/dumbnet-config --libs`"
+     elif test -x $withval/bin/dumbnet-config; then
+        DNETINC="`$withval/bin/dumbnet-config --cflags`"
+        DNETLIB="`$withval/bin/dumbnet-config --libs`"
      else
-        AC_ERROR(dnet-config not found in $withval/bin)
+        AC_ERROR(dumbnet-config not found in $withval/bin)
      fi
      ;;
   esac ],
-[ if test -x ${prefix}/bin/dnet-config; then
-     DNETINC="`${prefix}/bin/dnet-config --cflags`"
-     DNETLIB="`${prefix}/bin/dnet-config --libs`"
+[ if test -x ${prefix}/bin/dumbnet-config; then
+     DNETINC="`${prefix}/bin/dumbnet-config --cflags`"
+     DNETLIB="`${prefix}/bin/dumbnet-config --libs`"
   else
      AC_MSG_RESULT(no)
-     AC_ERROR(libdnet not found)
+     AC_ERROR(libdumbnet not found)
   fi
   AC_MSG_RESULT(yes) ]
 )
@@ -77,7 +77,7 @@ AC_ARG_WITH(libevent,
      fi
      ;;
   esac ],
-[ if test -f ${prefix}/include/event.h -a -f ${prefix}/lib/libevent.a;
+[ if test -f ${prefix}/include/event.h -a -f ${prefix}/lib/${host}/libevent.a;
 then
      EVENTINC="-I${prefix}/include"
      EVENTLIB="-L${prefix}/lib -levent"
@@ -161,12 +161,12 @@ AC_REPLACE_FUNCS(daemon)
 CFLAGS=$DNETINC
 LIBS=$DNETLIB
 
-dnl see if dnet works
-        AC_MSG_CHECKING(for working addr_cmp in libdnet)
+dnl see if dumbnet works
+        AC_MSG_CHECKING(for working addr_cmp in libdumbnet)
         AC_TRY_RUN(
 #include <sys/types.h>
 #include <stdlib.h>
-#include <dnet.h>
+#include <dumbnet.h>
 int
 main(int argc, char **argv)
 {
