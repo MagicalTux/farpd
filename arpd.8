@@ -1,0 +1,64 @@
+.\"
+.\" Copyright (c) 2001 Dug Song <dugsong@monkey.org>
+.\"
+.Dd August 4, 2001
+.Dt ARPD 8
+.Sh NAME
+.Nm arpd
+.Nd ARP reply daemon
+.Sh SYNOPSIS
+.Nm arpd
+.Op Fl d
+.Op Fl i Ar interface
+.Op Ar net ...
+.Sh DESCRIPTION
+.Nm
+replies to any ARP request for an IP address matching the specified
+destination
+.Ar net
+with the hardware MAC address of the specified
+.Ar interface ,
+but only after determining if another host already claims it.
+.Pp
+Any IP address claimed by
+.Nm
+is eventually forgotten after a period of inactivity or after a
+hard timeout, and is relinquished if the real owner shows up.
+.Pp
+This enables a single host to claim all unassigned addresses on a
+LAN for network monitoring or simulation.
+.Pp
+.Nm
+exits on an interrupt or termination signal.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl d
+Do not daemonize, and enable verbose debugging messages.
+.It Fl i Ar interface
+Listen on
+.Ar interface .
+If unspecified, 
+.Nm 
+searches the system interface list for the lowest numbered, configured
+``up'' interface (excluding loopback).
+.It Ar net
+The IP address or network (specified in CIDR notation) or IP address
+ranges to claim
+(e.g. ``10.0.0.3'', ``10.0.0.0/16'' or ``10.0.0.5-10.0.0.15''). If unspecified,
+.Nm
+will attempt to claim any IP address it sees an ARP request for.
+Mutiple addresses may be specified.
+.El
+.Sh FILES
+.Bl -tag -width /var/run/arpd.pid
+.It Pa /var/run/arpd.pid
+.El
+.Sh SEE ALSO
+.Xr pcapd 8 ,
+.Xr synackd 8
+.Sh AUTHORS
+Dug Song
+.Aq dugsong@monkey.org ,
+Niels Provos
+.Aq provos@citi.umich.edu
