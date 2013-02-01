@@ -1,0 +1,9 @@
+farpd for Debian
+----------------
+
+The upstream source package has been renamed 'farpd' (for 'fake arpd')
+since there is already and 'arpd' package in Debian. Notice that,
+however, the program provided is also called farpd (to avoid 
+conflicting with the arpd package)
+
+ -- Javier Fernandez-Sanguino <jfs@computer.org>, Thu, 27 Mar 2003 10:25:02 +0100

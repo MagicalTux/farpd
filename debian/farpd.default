@@ -1,0 +1,16 @@
+# Options for the Fake arp daemon
+#
+# Interface where farpd will listen in
+INTERFACE=""
+
+# Network for which fake arp daemon will answer to
+# You can leave this empty but then the daemon will try to take over
+# all the network addresses in that interface
+# 
+# Note: Default 'unconfigured' means that farpd will not startup, you
+# have to setup a valid value here (can be empty)
+NETWORK="unconfigured"
+
+# Time to wait for the daemon to die before restarting it
+# (in seconds)
+# DODTIME=5

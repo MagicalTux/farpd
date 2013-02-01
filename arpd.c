@@ -28,12 +28,11 @@
 
 #include <event.h>
 #include <dnet.h>
-#include "tree.h"
 
 #define ARPD_MAX_ACTIVE		600
 #define ARPD_MAX_INACTIVE	300
 
-#define PIDFILE			"/var/run/arpd.pid"
+#define PIDFILE			"/var/run/farpd.pid"
 
 struct arp_req {
 	struct addr		pa;
@@ -45,21 +44,13 @@ struct arp_req {
 	struct event		discover;
 
 	struct addr		ha;
-
-	SPLAY_ENTRY(arp_req)	next;
 };
-
-static SPLAY_HEAD(tree, arp_req) arpd_reqs;
 
 int
 compare(struct arp_req *a, struct arp_req *b)
 {
 	return (addr_cmp(&a->pa, &b->pa));
 }
-
-SPLAY_PROTOTYPE(tree, arp_req, next, compare);
-
-SPLAY_GENERATE(tree, arp_req, next, compare);
 
 static pcap_t			*arpd_pcap;
 static arp_t			*arpd_arp;
@@ -190,8 +181,6 @@ arpd_init(char *dev, int naddresses, char **addresses)
 	
 	dst = arpd_expandips(naddresses, addresses);
 
-	SPLAY_INIT(&arpd_reqs);
-	
 	if ((arpd_arp = arp_open()) == NULL)
 		err(1, "arp_open");
 
@@ -265,7 +254,7 @@ arpd_send(eth_t *eth, int op,
 	    spa->addr_ip, tha->addr_eth, tpa->addr_ip);
 	
 	if (op == ARP_OP_REQUEST) {
-		syslog(LOG_DEBUG, __FUNCTION__ ": who-has %s tell %s",
+		syslog(LOG_DEBUG, "%s: who-has %s tell %s", __func__,
 		    addr_ntoa(tpa), addr_ntoa(spa));
 	} else if (op == ARP_OP_REPLY) {
 		syslog(LOG_INFO, "arp reply %s is-at %s",
@@ -282,7 +271,7 @@ arpd_lookup(struct addr *addr)
 	int error;
 
 	if (addr_cmp(addr, &arpd_ifent.intf_addr) == 0) {
-		syslog(LOG_DEBUG, __FUNCTION__ ": %s at %s",
+		syslog(LOG_DEBUG, "%s: %s at %s", __func__,
 		    addr_ntoa(addr), addr_ntoa(&arpd_ifent.intf_link_addr));
 		return (0);
 	}
@@ -291,10 +280,10 @@ arpd_lookup(struct addr *addr)
 	error = arp_get(arpd_arp, &arpent);
 	
 	if (error == -1) {
-		syslog(LOG_DEBUG, __FUNCTION__ ": no entry for %s",
+		syslog(LOG_DEBUG, "%s: no entry for %s", __func__,
 		    addr_ntoa(addr));
 	} else {
-		syslog(LOG_DEBUG, __FUNCTION__ ": %s at %s",
+		syslog(LOG_DEBUG, "%s: %s at %s", __func__,
 		    addr_ntoa(addr), addr_ntoa(&arpent.arp_ha));
 	}
 	return (error);
@@ -314,8 +303,7 @@ arpd_timeout(int fd, short event, void *arg)
 {
 	struct arp_req *req = arg;
 	
-	SPLAY_REMOVE(tree, &arpd_reqs, req);
-	syslog(LOG_DEBUG, "%s: expiring %s",__FUNCTION__, addr_ntoa(&req->pa));
+	syslog(LOG_DEBUG, "%s: expiring %s", __func__, addr_ntoa(&req->pa));
 	arpd_free(req);
 }
 
@@ -370,65 +358,14 @@ arpd_recv_cb(u_char *u, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 		addr_pack(&tmp.pa, ADDR_TYPE_IP, IP_ADDR_BITS,
 		    &ethip->ar_tpa, IP_ADDR_LEN);
 
-		req = SPLAY_FIND(tree, &arpd_reqs, &tmp);
-		if (req == NULL) {
-			if ((req = calloc(1, sizeof(*req))) == NULL) {
-				syslog(LOG_ERR, "calloc: %m");
-				arpd_exit(1);
-			}
-			memcpy(&req->pa, &tmp.pa, sizeof(tmp.pa));
-
-			timeout_set(&req->active, arpd_timeout, req);
-			timeout_set(&req->inactive, arpd_timeout, req);
-			timeout_set(&req->discover, arpd_discovercb, req);
-			
-			timerclear(&tv);
-			tv.tv_sec = ARPD_MAX_ACTIVE;
-			timeout_add(&req->active, &tv);
-
-			SPLAY_INSERT(tree, &arpd_reqs, req);
-
-			/* Turn into negative cache */
-			if (arpd_lookup(&tmp.pa) == 0)
-				req->negative = 1;
-			else
-				arpd_discover(req, &src.arp_ha);
-		} else {
-			timerclear(&tv);
-			tv.tv_sec = ARPD_MAX_INACTIVE;
-			timeout_add(&req->inactive, &tv);
-			
-			if (req->negative) {
-				syslog(LOG_DEBUG, "%s: %s is allocated",
-				    __FUNCTION__, addr_ntoa(&req->pa));
-				return;
-			}
-
-			if (req->cnt >= 3) {
-				arpd_send(arpd_eth, ARP_OP_REPLY,
-				    &arpd_ifent.intf_link_addr, &tmp.pa,
-				    &src.arp_ha, &src.arp_pa);
-			} else {
-				syslog(LOG_DEBUG,
-				    "%s: %s still discovering (%d)",
-				    __FUNCTION__, addr_ntoa(&req->pa),
-				    req->cnt);
-			}
-		}
+			arpd_send(arpd_eth, ARP_OP_REPLY,
+			    &arpd_ifent.intf_link_addr, &tmp.pa,
+			    &src.arp_ha, &src.arp_pa);
 		break;
 		
 	case ARP_OP_REPLY:
 		addr_pack(&tmp.pa, ADDR_TYPE_IP, IP_ADDR_BITS,
 		    &ethip->ar_spa, IP_ADDR_LEN);
-		if ((req = SPLAY_FIND(tree, &arpd_reqs, &tmp)) != NULL) {
-			addr_pack(&src.arp_ha, ADDR_TYPE_ETH, ETH_ADDR_BITS,
-			    ethip->ar_sha, ETH_ADDR_LEN);
-			syslog(LOG_DEBUG, __FUNCTION__ ": %s at %s",
-			    addr_ntoa(&req->pa), addr_ntoa(&src.arp_ha));
-			
-			/* This address is claimed */
-			req->negative = 1;
-		}
 		break;
 	}
 }
@@ -445,9 +382,6 @@ arpd_recv(int fd, short type, void *ev)
 void
 terminate_handler(int sig)
 {
-	extern int event_gotsig;
-
-	event_gotsig = 1;
 	arpd_sig = sig;
 }
 
@@ -464,7 +398,6 @@ int
 main(int argc, char *argv[])
 {
 	struct event recv_ev;
-	extern int (*event_sigcb)(void);
 	char *dev;
 	int c, debug;
 	FILE *fp;
@@ -524,7 +457,6 @@ main(int argc, char *argv[])
 		perror("signal");
 		return (-1);
 	}
-	event_sigcb = arpd_signal;
 	
 	event_dispatch();
 

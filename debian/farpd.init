@@ -1,0 +1,151 @@
+#!/bin/sh -e
+#
+# /etc/init.d/farpd
+#
+# Originally written by Miquel van Smoorenburg <miquels@drinkel.ow.org>.
+# Modified for Debian GNU/Linux by Ian Murdock <imurdock@gnu.ai.mit.edu>.
+# Modified for nessusd by Luca Andreucci <andrew@andrew.org>
+# Furter changes by Javier Fernandez-Sanguino <jfs@debian.org> for the 
+# Debian GNU/Linux distribution
+# Modified for farpd by Javier Fernandez-Sanguino <jfs@debian.org> 
+#
+### BEGIN INIT INFO
+# Provides:          farpd
+# Required-Start:    $network $syslog $remote_fs
+# Required-Stop:     $network $syslog $remote_fs
+# Default-Start:     
+# Default-Stop:      0 1 6
+# Short-Description: Daemon that replies to any ARP requests
+# Description:       Farpd ('fake ARPD') will reply to any ARP request for IP 
+#                    addresses matching a destination net with the MAC
+#                    address of the specified interface if no hosts claims it.
+### END INIT INFO
+
+# Default
+INTERFACE=""
+NETWORK="unconfigured"
+# time to wait for daemons death, in seconds
+# don't set it too low or you might not let it die gracefully
+DODTIME=1
+[ -r /etc/default/farpd ] && . /etc/default/farpd
+
+. /lib/lsb/init-functions
+
+DAEMON=/usr/sbin/farpd
+PIDFILE=/var/run/farpd.pid
+NAME=farpd
+LABEL="Fake-arpd daemon"
+DAEMONOPTS="$NETWORK"
+if [ -n "$INTERFACE" ] ; then
+    DAEMONOPTS="-i $INTERFACE "
+fi
+if [ -n "$NETWORK" ] ; then
+    DAEMONOPTS="$DAEMONOPTS $NETWORK "
+fi
+
+test -x $DAEMON || exit 0
+
+
+configured() {
+# Check if the user has configured it
+    if [ "$NETWORK" = "unconfigured" ] ; then
+        log_failure_msg "Fake-arpd has not been configured, please review and configure /etc/default/farpd"
+        log_end_msg 1
+    fi
+}
+
+running()
+{
+    # No pidfile, probably no daemon present
+    #
+    [ -r "$PIDFILE" ] && pid=`cat $PIDFILE`
+
+    # No pid, probably no daemon present
+    [ -z "$pid" ] && return 1
+
+    [ ! -d /proc/$pid ] &&  return 1
+    cmd=`cat /proc/$pid/cmdline | tr "\000" "\n"|head -n 1 |cut -d : -f 1`
+    # No process?
+    [ "$cmd" != "$DAEMON" ] &&  return 1
+
+    return 0
+}
+
+
+start() {
+        start-stop-daemon --start --exec $DAEMON -- $DAEMONOPTS 2>&1 >/dev/null
+	errcode=$?
+# If we don't sleep then running() might not see the pidfile
+	sleep $DODTIME
+	return $errcode
+}
+
+force_stop() {
+	[ ! -e "$PIDFILE" ] && return
+	if running ; then
+		kill -15 $pid
+	# Is it really dead?
+		sleep "$DODTIME"s
+		if running ; then
+			kill -9 $pid
+			sleep "$DODTIME"s
+			if running ; then
+				log_failure_msg "Cannot kill $LABEL (pid=$pid)!"
+                                log_end_msg 1
+			fi
+		fi
+	fi
+	rm -f $PIDFILE
+}
+
+case "$1" in
+  start)
+    configured
+    log_daemon_msg "Starting $LABEL" "$NAME"
+    if start && running ;  then
+            log_end_msg 0
+    else
+            log_end_msg 1
+    fi
+    ;;
+  stop)
+    log_daemon_msg "Stopping $LABEL" "$NAME"
+    start-stop-daemon --stop --pidfile $PIDFILE --quiet --oknodo --exec $DAEMON
+    if running; then
+        force_stop
+    fi
+    log_end_msg 0
+      ;;
+  reload|force-reload|restart)
+    configured
+    log_daemon_msg "Restarting $LABEL" "$NAME"
+    if running; then
+    	start-stop-daemon --stop --pidfile $PIDFILE --quiet --oknodo --exec $DAEMON
+    	sleep "$DODTIME"s
+    fi
+    if running; then
+        force_stop
+    fi
+    if start && running ;  then
+            log_end_msg 0
+    else
+            log_end_msg 1
+    fi
+    ;;
+  status)
+    configured
+    echo -n "$LABEL is "
+    if running ;  then
+	    echo "running"
+    else
+    	    echo " not running."
+	    exit 1
+    fi
+    ;;
+  *)
+    log_action_msg "Usage: /etc/init.d/$NAME {start|stop|restart|reload|status}"
+    exit 2
+    ;;
+esac
+
+exit 0

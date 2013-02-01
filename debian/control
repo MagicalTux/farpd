@@ -1,0 +1,18 @@
+Source: farpd
+Section: net
+Priority: optional
+Maintainer: Javier Fernández-Sanguino Peña <jfs@debian.org>
+Build-Depends: debhelper (>> 4.0.0), libdumbnet-dev, libpcap0.8-dev | libpcap-dev, libevent-dev
+Standards-Version: 3.6.0.1
+
+Package: farpd
+Architecture: any
+Depends: ${shlibs:Depends} ${misc:Depends}
+Description: Fake ARP user space daemon
+ This ARP daemon replies to any ARP request for a set of IP addresses
+ with the hardware MAC address of one of the interfaces of the
+ server after determining that no other host in the network is claiming
+ that IP.
+ .
+ This enables a single host to claim all unassigned addresses on a
+ LAN for network monitoring or simulation purposes.

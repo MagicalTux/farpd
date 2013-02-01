@@ -4,10 +4,10 @@
 .Dd August 4, 2001
 .Dt ARPD 8
 .Sh NAME
-.Nm arpd
+.Nm farpd
 .Nd ARP reply daemon
 .Sh SYNOPSIS
-.Nm arpd
+.Nm farpd
 .Op Fl d
 .Op Fl i Ar interface
 .Op Ar net ...
@@ -31,6 +31,11 @@ LAN for network monitoring or simulation.
 .Nm
 exits on an interrupt or termination signal.
 .Pp
+Note: The program name
+.Nm
+has been changed in Debian GNU/Linux from the original name
+(\fBarpd\fR) to avoid name clash with other ARP daemons.
+.Pp
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl d
@@ -52,11 +57,31 @@ Mutiple addresses may be specified.
 .El
 .Sh FILES
 .Bl -tag -width /var/run/arpd.pid
-.It Pa /var/run/arpd.pid
+.It Pa /var/run/farpd.pid
 .El
 .Sh SEE ALSO
 .Xr pcapd 8 ,
 .Xr synackd 8
+.Sh BUGS
+.Nm
+will respond too slowly to ARP requests for some applications. In 
+order to ensure that it does not claim existing IP addresses it will send two
+ARP request and wait for a reply. This slowness affects the \fBnmap\fR network
+scanning tool, and possibly others, which uses by default ARP when scanning
+local networks. The answers from 
+.Nm
+will come after the tool has timeout waiting for the ARP replies and,
+consequently, IP addresses claimed by 
+.Nm 
+will not be discovered.
+.Pp
+Additionally, 
+.Nm
+sends the ARP replies to the broadcast address of the network and not to the
+host that send the ARP request. Some systems and applications (notably
+\fBnmap\fR) will not handled these requests and expect directed ARP replies
+(i.e. targeted specifically to the host that sent the request and not to the
+network)
 .Sh AUTHORS
 Dug Song
 .Aq dugsong@monkey.org ,

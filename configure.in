@@ -77,7 +77,7 @@ AC_ARG_WITH(libevent,
      fi
      ;;
   esac ],
-[ if test -f ${prefix}/include/event.h -a -f ${prefix}/lib/libevent.a;
+[ if test -f ${prefix}/include/event.h -a -f ${prefix}/lib/${host}/libevent.a;
 then
      EVENTINC="-I${prefix}/include"
      EVENTLIB="-L${prefix}/lib -levent"
